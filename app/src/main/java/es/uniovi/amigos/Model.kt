@@ -3,26 +3,43 @@ package es.uniovi.amigos
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PUT
+import retrofit2.http.Path
 
-// 1. LA FORMA DE LOS DATOS (Data Class)
-// Debe coincidir EXACTAMENTE con las claves de tu JSON del servidor Flask ('name', 'lati', 'longi')
+// 1. Añadimos el campo 'id' (Antes no lo usábamos, ahora es obligatorio)
 data class Amigo(
+    val id: Int,
     val name: String,
     val lati: String,
     val longi: String
-    // No necesitamos 'id' ni 'device' para pintar el mapa, así que los omitimos
 )
 
-// 2. EL CONTRATO (Interfaz API)
-// Aquí definimos qué operaciones podemos hacer con el servidor
+// 2. Nueva clase 'paquete' para enviar solo las coordenadas al servidor
+data class LocationPayload(
+    val lati: String,
+    val longi: String
+)
+
+// 3. Nuevos métodos en la API
 interface AmigosApiService {
-    @GET("api/amigos") // La ruta relativa (se suma a la URL base)
+    // Obtener toda la lista (lo que ya tenías)
+    @GET("api/amigos")
     suspend fun getAmigos(): Response<List<Amigo>>
+
+    // NUEVO: Buscar tu propio usuario por nombre (ej: "Manolito")
+    @GET("api/amigo/byName/{name}")
+    suspend fun getAmigoByName(@Path("name") name: String): Response<Amigo>
+
+    // NUEVO: Actualizar tu posición en el servidor
+    @PUT("api/amigo/{id}")
+    suspend fun updateAmigoPosition(
+        @Path("id") amigoId: Int,
+        @Body payload: LocationPayload
+    ): Response<Amigo>
 }
 
-// 3. EL CLIENTE (Singleton)
-// El objeto que gestiona la conexión real
 object RetrofitClient {
     private const val BASE_URL = "https://noneducatory-chicly-jefferson.ngrok-free.dev"
 
