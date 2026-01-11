@@ -8,6 +8,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.tasks.await
 
 // CAMBIO IMPORTANTE: Heredamos de AndroidViewModel para poder usar 'application'
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -25,7 +27,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         Log.d("MainViewModel", "Arrancando... iniciando descarga de amigos.")
-        startPolling() // Empezamos a descargar chinchetas ajenas
+        getAmigosList()
     }
 
     // --- 1. IDENTIFICACIÓN: Preguntar al servidor quién soy ---
@@ -33,14 +35,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         userName = name
         Log.d("MainViewModel", "Usuario establecido: $name. Buscando ID...")
 
+
         viewModelScope.launch {
             try {
                 // Buscamos el ID en el servidor usando el nombre
                 val response = RetrofitClient.api.getAmigoByName(name)
                 if (response.isSuccessful) {
+
                     val yo = response.body()
                     userId = yo?.id
                     Log.d("MainViewModel", "¡Identificado! Soy ID: $userId")
+
+                    val token = FirebaseMessaging.getInstance().token.await()
+                    Log.d("MainViewModel", "Usuario: $userName, Id: $userId, Token: $token")
+
+                    try {
+                        // Asegúrate de tener apiService disponible
+                        // Usamos ?.let para desempaquetar el Int? de forma segura
+                        userId?.let { id ->
+                            RetrofitClient.api.updateAmigoDeviceToken(id, DeviceTokenPayload(token))
+                            Log.d("MainViewModel", "Token subido al servidor")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MainViewModel", "Error subiendo token: $e")
+                    }
+
 
                     // En cuanto sé quién soy, enciendo el GPS
                     startLocationUpdates()
@@ -99,13 +118,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun getAmigosList() {
+    fun getAmigosList() {
         viewModelScope.launch {
             try {
                 val response = RetrofitClient.api.getAmigos()
                 if (response.isSuccessful) {
                     // Usamos postValue para evitar errores de hilo
                     _amigosList.postValue(response.body())
+                    Log.d("MainViewModel", "Lista actualizada por petición.")
                 }
             } catch (e: Exception) { Log.e("Error", "Error polling: ${e.message}") }
         }

@@ -22,6 +22,8 @@ data class LocationPayload(
     val longi: String
 )
 
+data class DeviceTokenPayload(val device: String)
+
 // 3. Nuevos métodos en la API
 interface AmigosApiService {
     // Obtener toda la lista (lo que ya tenías)
@@ -38,6 +40,9 @@ interface AmigosApiService {
         @Path("id") amigoId: Int,
         @Body payload: LocationPayload
     ): Response<Amigo>
+
+    @PUT("/api/amigo/{id}")
+    suspend fun updateAmigoDeviceToken(@Path("id") id: Int, @Body data: DeviceTokenPayload)
 }
 
 object RetrofitClient {

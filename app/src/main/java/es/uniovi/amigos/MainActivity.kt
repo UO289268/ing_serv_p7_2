@@ -21,6 +21,9 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,6 +43,20 @@ class MainActivity : AppCompatActivity() {
             Log.d("Permissions", "GPS Denegado. No podremos mover tu chincheta.")
         }
     }
+
+    private val updateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            // Si recibimos el aviso "updateFromServer"...
+            if (intent?.action == "updateFromServer") {
+                Log.d("MainActivity", "¡Aviso recibido! Recargando datos...")
+
+                // ... LLAMAMOS A LA FUNCIÓN PARA QUE PIDA LOS DATOS NUEVOS
+                viewModel.getAmigosList()
+            }
+        }
+    }
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,8 +153,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() { super.onResume(); map?.onResume() }
-    override fun onPause() { super.onPause(); map?.onPause() }
+    override fun onResume() { super.onResume();
+        map?.onResume()
+        val filter = IntentFilter("updateFromServer")
+        registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    }
+    override fun onPause() { super.onPause();
+        map?.onPause()
+        unregisterReceiver(updateReceiver)
+    }
 
     fun centrarMapaEnEuropa() {
         val mapController = map?.controller
